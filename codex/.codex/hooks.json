@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npm run lint 2>&1 && npm run build 2>&1 && npm run test 2>&1",
+            "statusMessage": "Running Codex stop checks"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c 'import re, sys; data=sys.stdin.read(); pattern=r\"rm\\\\s+-rf|git\\\\s+push\\\\s+--force|git\\\\s+reset\\\\s+--hard|DROP\\\\s+TABLE\"; blocked=re.search(pattern, data, re.I); print(\"BLOCKED: 위험한 명령어가 감지되었습니다.\", file=sys.stderr) if blocked else None; sys.exit(1 if blocked else 0)'",
+            "statusMessage": "Checking Codex Bash command"
+          }
+        ]
+      }
+    ]
+  }
+}
