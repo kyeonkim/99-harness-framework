@@ -121,9 +121,13 @@ npm test        # 테스트 통과
    - ARCHITECTURE.md 디렉토리 구조를 따르는가?
    - ADR 기술 스택을 벗어나지 않았는가?
    - CLAUDE.md CRITICAL 규칙을 위반하지 않았는가?
-3. 결과에 따라 `tasks/{task-name}/index.json`의 해당 task을 업데이트한다:
-   - 성공 → `"status": "completed"`, `"summary": "산출물 한 줄 요약"`
-   - 수정 3회 시도 후에도 실패 → `"status": "error"`, `"error_message": "구체적 에러 내용"`
+3. **설계 검증(자동)** — AC가 통과하면, 이 task에서 생성/수정한 파일 목록을 넘겨 `design-verifier` 서브에이전트를 Agent 도구로 호출한다. 검증자는 설계·규칙 충실도 / 경계·아키텍처 / 테스트 품질 3축을 적대적으로 판정한다.
+   - `PASS` → 다음 단계로 진행.
+   - `CONCERNS` → 검증자가 지적한 항목을 보강한 뒤 재검증한다. 보강이 과하다고 판단되면 그대로 두되, `summary`에 미해결 concern을 한 줄 남긴다.
+   - `FAIL` → 지적 항목을 수정하고 1단계부터 다시 검증한다(생성자 수정 3회 한도는 그대로 적용).
+4. 결과에 따라 `tasks/{task-name}/index.json`의 해당 task을 업데이트한다:
+   - 성공(AC 통과 + 검증자 PASS/concern 정리) → `"status": "completed"`, `"summary": "산출물 한 줄 요약"`
+   - 수정 3회 시도 후에도 AC 실패 또는 검증자 FAIL → `"status": "error"`, `"error_message": "구체적 에러 내용(검증자 지적 포함)"`
    - 사용자 개입 필요 (API 키, 외부 인증, 수동 설정 등) → `"status": "blocked"`, `"blocked_reason": "구체적 사유"` 후 즉시 중단
 
 ## 금지사항
@@ -136,6 +140,17 @@ npm test        # 테스트 통과
 
 task를 하나씩 순서대로 진행한다. 각 task는 위 task 파일의 검증 절차를 따라 상태를
 업데이트한다.
+
+**검증자 분리 원칙**: task를 실행한 세션(생성자)이 스스로 통과를 선언하지 않는다. AC 통과 후
+반드시 `design-verifier` 서브에이전트(read-only)가 독립적으로 판정한 뒤에야 `completed`로
+넘어간다. 생성자는 검증자의 지적을 수정만 하고, 검증자는 코드를 고치지 않는다. 이로써
+"만든 사람이 검사하는" 자기확증을 막는다. (버그·정확성 심층 리뷰가 따로 필요하면
+`/code-review`를 쓴다 — 검증자의 범위 밖이다.)
+
+> `design-verifier`는 전역 에이전트(`~/.claude/agents/design-verifier.md`)다. Agent 도구
+> 목록에 `design-verifier`가 없으면(이 템플릿을 새 머신/계정에 복제한 경우) 그 정의 파일을
+> `~/.claude/agents/`에 두면 활성화된다. 정의가 없으면 검증 단계를 건너뛰지 말고, 생성자와
+> 별개의 세션/서브에이전트에 위 3축 판정을 수동으로 지시해 분리를 유지한다.
 
 에러 복구:
 
