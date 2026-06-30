@@ -39,6 +39,13 @@ if [ -z "$VERIFY_CMD" ]; then
   exit 0
 fi
 
+# 부트스트랩 가드: VERIFY_CMD가 npm을 쓰는데 package.json이 아직 없으면 통과.
+# (프로젝트 셋업 task 전에는 검증할 대상이 없으므로 hook이 작업을 막지 않게 한다.)
+if printf '%s' "$VERIFY_CMD" | grep -q 'npm' && [ ! -f package.json ]; then
+  echo "verify-before-commit: package.json 없음 — 프로젝트 셋업 전이라 검증 생략(통과)." >&2
+  exit 0
+fi
+
 if eval "$VERIFY_CMD"; then
   exit 0
 else
